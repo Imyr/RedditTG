@@ -1,12 +1,12 @@
 import config 
-import constants
+import constants.constants as constants
 
 import aiohttp
 
-async def subParse():
+async def subParse(subName):
     postList = []
     async with aiohttp.ClientSession() as session:
-        async with session.get(constants.api.SUBREDDIT_URL.format(config.reddit.SUBREDDIT_LINK.split("/")[-2]), 
+        async with session.get(constants.api.SUBREDDIT_URL.format(subName), 
                                 headers=constants.api.HEADERS, 
                                 params=config.reddit.PARAMETERS) as response:
             respJson = await response.json()

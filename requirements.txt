@@ -1,0 +1,9 @@
+io
+re
+bs4
+aiohttp
+asyncio
+aiofiles
+requests
+telethon
+subprocess
