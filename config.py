@@ -8,7 +8,9 @@ class telegram:
     MESSAGE_STRUCTURE = "<b>{}</b>\nby <i>{}</i> on <a href={}>{}</a>"
 
 class reddit:
-    SUBREDDIT_LINK = "https://www.reddit.com/r/aww/"
+    SUBREDDIT_LIST = [
+                        "", ""
+                    ]
     FILTERS = {
                 "isSponsored": False,
                 "isStickied": False
