@@ -7,7 +7,6 @@ from io import BytesIO
 from bs4 import BeautifulSoup as bs
 
 class embed:
-    
     async def gfycat(mediaUrl):
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
@@ -41,7 +40,6 @@ class embed:
                 return(media)
 
 class redditHost:
-
     async def reddit(mediaUrl):
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
