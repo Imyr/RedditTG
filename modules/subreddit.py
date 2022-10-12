@@ -13,6 +13,11 @@ async def subParse(subName):
     
     for id in respJson["postIds"]:
         post = respJson["posts"][id]
+        
+        if post["crosspostRootId"]:
+            crosspost = post["crosspostRootId"]
+        else:
+            crosspost = False            
 
         for tag in config.reddit.FILTERS:
             if not (post[tag] == config.reddit.FILTERS[tag]):
@@ -24,7 +29,8 @@ async def subParse(subName):
                     "id": post["id"],
                     "author": post["author"],
                     "title": post["title"],
-                    "link": post["permalink"]
+                    "link": post["permalink"],
+                    "crosspost": crosspost
                     })
 
     return(postList)

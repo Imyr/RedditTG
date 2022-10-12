@@ -8,6 +8,7 @@ class telegram:
     MESSAGE_STRUCTURE = "<b>{}</b>\nby <i>{}</i> on <a href={}>{}</a>"
 
 class reddit:
+    COMPRESSED = False
     SUBREDDIT_LIST = [
                         "", ""
                     ]
@@ -16,7 +17,5 @@ class reddit:
                 "isStickied": False
             }
     PARAMETERS = {
-                "allow_over18": 1,
-                "sort": "top",
-                "t": "all"
+                "allow_over18": 1
                 }

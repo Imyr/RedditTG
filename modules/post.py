@@ -3,7 +3,7 @@ import config
 import constants.constants as constants
 
 import aiohttp
-from telethon import TelegramClient, events, sync
+from telethon import TelegramClient, errors
 
 tgClient = TelegramClient('reddiditbot-session', config.credentials.API_ID, 
                         config.credentials.API_HASH).start(bot_token=config.credentials.BOT_TOKEN)
@@ -11,9 +11,7 @@ tgClient.start()
 tgClient.parse_mode = 'html' 
 
 async def postMedia(postJson):
-    return
     mediaJson = postJson["media"]
-
     try:
 
         if mediaJson:
@@ -22,8 +20,7 @@ async def postMedia(postJson):
                 return(await media.redditHost.video(mediaUrl))
 
             if mediaJson["type"] == "gallery":
-                metadataJson = mediaJson["mediaMetadata"]
-                return(await media.redditHost.gallery(metadataJson))
+                return(await media.redditHost.gallery(mediaJson))
                 
             mediaUrl = mediaJson["content"]
             if mediaJson["type"] in ["image", "gifvideo"]:
@@ -55,11 +52,32 @@ async def postParse(postParsed):
     print(f"https://redd.it/{postParsed['id'][3:]} | {postParsed['title'].ljust(20)[0:20]} | ", end="")
 
     async with aiohttp.ClientSession() as session:
+        if postParsed["crosspost"]:
+            postParsed["id"] = postParsed["crosspost"]
         async with session.get(constants.api.POST_URL.format(postParsed["id"])) as response:
-            postJson = (await response.json())["posts"][postParsed["id"]]
+                postJson = (await response.json())["posts"][postParsed["id"]]
 
     message = config.telegram.MESSAGE_STRUCTURE.format(postParsed["title"], postParsed["author"], 
                                             postParsed["link"], postParsed["link"].split("/")[-5])
-    await tgClient.send_message(config.telegram.GROUP_ID, message, 
-                                file=await postMedia(postJson), 
-                                force_document=True, link_preview=False)
+
+    
+    media = await postMedia(postJson)
+    """    
+    messageList = (["" for i in media])
+    messageList[-1] = message
+    print(messageList)
+    """
+
+    if config.reddit.COMPRESSED:
+        try:
+            await tgClient.send_message(config.telegram.GROUP_ID, message, 
+                                        file=media, force_document=False, link_preview=False)
+        except errors.rpcerrorlist.MediaEmptyError:
+            print("media empty", media)              
+        except errors.rpcerrorlist.WebpageCurlFailedError:
+            print("failed curl", media)
+    else:
+        await tgClient.send_file(config.telegram.GROUP_ID, 
+                            file=media, force_document=True)
+        await tgClient.send_message(config.telegram.GROUP_ID, 
+                                message, link_preview=False)
