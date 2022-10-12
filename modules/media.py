@@ -6,26 +6,24 @@ import subprocess
 from io import BytesIO
 from bs4 import BeautifulSoup as bs
 
-from config import reddit
-
 class embed:
-    async def gfycat(mediaUrl):
+    async def gfycat(mediaUrl, url_mode):
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
                 gyfcatEmbed = requests.utils.unquote(re.search(r'\?src=(.*)&display_name=Gfycat', str(await response.read())).group(1))
             async with session.get(gyfcatEmbed) as response:
                 gyfcatEmbed = requests.utils.unquote(re.search(r'"video":{"@type":"VideoObject","author":"anonymous","contentUrl":"(.*)","creator":"anonymous",', str(await response.read())).group(1))
             print(gyfcatEmbed[0:50])
-            if reddit.COMPRESSED:
+            if url_mode:
                 return(gyfcatEmbed)
             async with session.get(gyfcatEmbed) as response:
                 media = BytesIO(await response.read())
         media.name = gyfcatEmbed.split("/")[-1].split("?")[0]
         return(media)
 
-    async def imgur(mediaUrl):
+    async def imgur(mediaUrl, url_mode):
         print(mediaUrl[0:50])
-        if reddit.COMPRESSED:
+        if url_mode:
             return(mediaUrl)
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
@@ -33,14 +31,14 @@ class embed:
         media.name = mediaUrl.split("/")[-1].split("?")[0]
         return(media)
     
-    async def redgifs(mediaUrl):
+    async def redgifs(mediaUrl, url_mode):
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
                 redgifsEmbed = requests.utils.unquote(re.search(r'<iframe src="(.*)" frameborder="0"', str(await response.read())).group(1))
             async with session.get(redgifsEmbed) as response:
                 redgifsEmbed = requests.utils.unquote(re.search(r'<meta property="og:video" content="(.*?)"><meta property="og:video:type" content="video/mp4">', str(await response.read())).group(1).replace("&amp;", "&"))
             print(redgifsEmbed[0:50])
-            if reddit.COMPRESSED:
+            if url_mode:
                 return(redgifsEmbed)   
             async with session.get(redgifsEmbed) as response:
                 media = BytesIO(await response.read())
@@ -48,9 +46,9 @@ class embed:
                 return(media)
 
 class redditHost:
-    async def reddit(mediaUrl):
+    async def reddit(mediaUrl, url_mode):
         print(mediaUrl[0:50])
-        if reddit.COMPRESSED:
+        if url_mode:
             return(mediaUrl)
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
@@ -58,7 +56,7 @@ class redditHost:
         media.name = mediaUrl.split("/")[-1].split("?")[0]
         return(media)
 
-    async def video(mediaUrl):
+    async def video(mediaUrl, url_mode):
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
                 parsedResponse = bs(await response.read(), "lxml")
@@ -80,7 +78,7 @@ class redditHost:
             audioUrl = mediaUrl.split("DASHPlaylist.mpd")[0] + audioList[-1]
         except AttributeError:
             print(videoUrl[0:50]) 
-            if reddit.COMPRESSED:
+            if url_mode:
                 return(videoUrl)
             async with aiohttp.ClientSession() as session:
                 async with session.get(videoUrl) as response:
@@ -104,7 +102,7 @@ class redditHost:
                 media.name = videoUrl.split("/")[-2] + "." + extension
             return(media)  
 
-    async def gallery(mediaJson):
+    async def gallery(mediaJson, url_mode):
         mediaID = []
         for i in mediaJson["gallery"]["items"]:
             mediaID.append(i["mediaId"])
@@ -123,11 +121,17 @@ class redditHost:
             print("Gallery hosted on Reddit.")
         return(mediaList)
 
-async def noEmbed(sourceJson):
+async def noEmbed(sourceJson, url_mode):
     if "imgur" in sourceJson["url"]:
         mediaUrl = sourceJson["url"].replace("gifv", "mp4")
         print(mediaUrl[0:50])
-        return(mediaUrl)
+        if url_mode:
+            return(mediaUrl)
+        async with aiohttp.ClientSession() as session:
+            async with session.get(mediaUrl) as response:
+                media = BytesIO(await response.read())
+        media.name = mediaUrl.split("/")[-1].split("?")[0]
+        return(media)
     else:
         print("NO EMBED?")
         return

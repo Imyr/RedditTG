@@ -10,38 +10,38 @@ tgClient = TelegramClient('reddiditbot-session', config.credentials.API_ID,
 tgClient.start()
 tgClient.parse_mode = 'html' 
 
-async def postMedia(postJson):
+async def postMedia(postJson, url_mode):
     mediaJson = postJson["media"]
     try:
 
         if mediaJson:
             if mediaJson["type"] == "video":
                 mediaUrl = mediaJson["dashUrl"]
-                return(await media.redditHost.video(mediaUrl))
+                return(await media.redditHost.video(mediaUrl, url_mode))
 
             if mediaJson["type"] == "gallery":
-                return(await media.redditHost.gallery(mediaJson))
+                return(await media.redditHost.gallery(mediaJson, url_mode))
                 
             mediaUrl = mediaJson["content"]
             if mediaJson["type"] in ["image", "gifvideo"]:
                 try:
-                    return(await media.redditHost.reddit(mediaUrl))
+                    return(await media.redditHost.reddit(mediaUrl, url_mode))
                 except aiohttp.client_exceptions.InvalidURL:
                     mediaUrl = postJson["source"]["url"]
-                    return(await media.embed.imgur(mediaUrl))
+                    return(await media.embed.imgur(mediaUrl, url_mode))
 
             if mediaJson["type"] == "embed":
                 if mediaJson["provider"] == "Gfycat":
-                    return(await media.embed.gfycat(mediaUrl))
+                    return(await media.embed.gfycat(mediaUrl, url_mode))
                 if mediaJson["provider"] == "RedGIFs":
-                    return(await media.embed.redgifs(mediaUrl))
+                    return(await media.embed.redgifs(mediaUrl, url_mode))
             else:
                 print(f"{mediaJson['provider']} | {mediaJson['type']} | {mediaUrl}")
                 return
             
         else:
             sourceJson = postJson["source"]
-            return(await media.noEmbed(sourceJson))
+            return(await media.noEmbed(sourceJson, url_mode))
 
     except Exception as e:
         print(e)
@@ -60,23 +60,21 @@ async def postParse(postParsed):
     message = config.telegram.MESSAGE_STRUCTURE.format(postParsed["title"], postParsed["author"], 
                                             postParsed["link"], postParsed["link"].split("/")[-5])
 
-    
-    media = await postMedia(postJson)
-    """    
-    messageList = (["" for i in media])
-    messageList[-1] = message
-    print(messageList)
-    """
-
     if config.reddit.COMPRESSED:
+        media = await postMedia(postJson, True)
+
         try:
             await tgClient.send_message(config.telegram.GROUP_ID, message, 
                                         file=media, force_document=False, link_preview=False)
-        except errors.rpcerrorlist.MediaEmptyError:
-            print("media empty", media)              
-        except errors.rpcerrorlist.WebpageCurlFailedError:
-            print("failed curl", media)
+        except Exception:
+            print("TRYING | UNCOMP | ", end="")
+            media = await postMedia(postJson, False)
+            await tgClient.send_message(config.telegram.GROUP_ID, message, 
+                            file=media, force_document=False, link_preview=False)
+
     else:
+
+        media = await postMedia(postJson, False)
         await tgClient.send_file(config.telegram.GROUP_ID, 
                             file=media, force_document=True)
         await tgClient.send_message(config.telegram.GROUP_ID, 

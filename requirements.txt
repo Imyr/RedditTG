@@ -3,6 +3,7 @@ re
 bs4
 aiohttp
 asyncio
+pillow
 aiofiles
 requests
 telethon
