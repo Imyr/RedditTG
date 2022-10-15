@@ -1,4 +1,6 @@
+import os
 import re
+import shutil
 import aiohttp
 import aiofiles
 import requests
@@ -12,17 +14,28 @@ class embed:
             async with session.get(mediaUrl) as response:
                 gyfcatEmbed = requests.utils.unquote(re.search(r'\?src=(.*)&display_name=Gfycat', str(await response.read())).group(1))
             async with session.get(gyfcatEmbed) as response:
-                gyfcatEmbed = requests.utils.unquote(re.search(r'"video":{"@type":"VideoObject","author":"anonymous","contentUrl":"(.*)","creator":"anonymous",', str(await response.read())).group(1))
-            print(gyfcatEmbed[0:50])
+                mediaUrl = requests.utils.unquote(re.search(r'"video":{"@type":"VideoObject","author":"anonymous","contentUrl":"(.*)","creator":"anonymous",', str(await response.read())).group(1))
             if url_mode:
-                return(gyfcatEmbed)
+                return(mediaUrl)
             async with session.get(gyfcatEmbed) as response:
                 media = BytesIO(await response.read())
-        media.name = gyfcatEmbed.split("/")[-1].split("?")[0]
+        media.name = mediaUrl.split("/")[-1].split("?")[0]
         return(media)
 
     async def imgur(mediaUrl, url_mode):
-        print(mediaUrl[0:50])
+        async with aiohttp.ClientSession() as session:
+            async with session.get(mediaUrl) as response:
+                gyfcatEmbed = requests.utils.unquote(re.search(r'\?src=(.*)&display_name=Gfycat', str(await response.read())).group(1))
+            async with session.get(gyfcatEmbed) as response:
+                mediaUrl = requests.utils.unquote(re.search(r'"video":{"@type":"VideoObject","author":"anonymous","contentUrl":"(.*)","creator":"anonymous",', str(await response.read())).group(1))
+            if url_mode:
+                return(mediaUrl)
+            async with session.get(gyfcatEmbed) as response:
+                media = BytesIO(await response.read())
+        media.name = mediaUrl.split("/")[-1].split("?")[0]
+        return(media)
+
+    async def misc(mediaUrl, url_mode):
         if url_mode:
             return(mediaUrl)
         async with aiohttp.ClientSession() as session:
@@ -36,18 +49,14 @@ class embed:
             async with session.get(mediaUrl) as response:
                 redgifsEmbed = requests.utils.unquote(re.search(r'<iframe src="(.*)" frameborder="0"', str(await response.read())).group(1))
             async with session.get(redgifsEmbed) as response:
-                redgifsEmbed = requests.utils.unquote(re.search(r'<meta property="og:video" content="(.*?)"><meta property="og:video:type" content="video/mp4">', str(await response.read())).group(1).replace("&amp;", "&"))
-            print(redgifsEmbed[0:50])
-            if url_mode:
-                return(redgifsEmbed)   
+                mediaUrl = requests.utils.unquote(re.search(r'<meta property="og:video" content="(.*?)"><meta property="og:video:type" content="video/mp4">', str(await response.read())).group(1).replace("&amp;", "&"))
             async with session.get(redgifsEmbed) as response:
                 media = BytesIO(await response.read())
                 media.name = redgifsEmbed.split("/")[-1].split("?")[0]             
-                return(media)
+        return(media)
 
 class redditHost:
     async def reddit(mediaUrl, url_mode):
-        print(mediaUrl[0:50])
         if url_mode:
             return(mediaUrl)
         async with aiohttp.ClientSession() as session:
@@ -76,10 +85,9 @@ class redditHost:
         try:
             audioList = [(i.baseurl.text) for i in parsedResponse.find("adaptationset", contenttype="audio").find_all("representation")]
             audioUrl = mediaUrl.split("DASHPlaylist.mpd")[0] + audioList[-1]
-        except AttributeError:
-            print(videoUrl[0:50]) 
+        except AttributeError: 
             if url_mode:
-                return(videoUrl)
+                return(mediaUrl)
             async with aiohttp.ClientSession() as session:
                 async with session.get(videoUrl) as response:
                     media = BytesIO(await response.read())
@@ -94,37 +102,41 @@ class redditHost:
                 async with aiofiles.open("temp/" + videoUrl.split("/")[-2] + "-vid." + extension, "wb") as f:
                     await f.write(video)
                 async with aiofiles.open("temp/" + videoUrl.split("/")[-2] + "-aud." + extension, "wb") as f:
-                    await f.write(audio)    
-            print(videoUrl[0:50])
+                    await f.write(audio)
             subprocess.call(["ffmpeg", "-i", "temp/" + videoUrl.split("/")[-2] + "-vid." + extension, "-i", "temp/" + videoUrl.split("/")[-2] + "-aud." + extension, "-map", "0", "-map", "1", "-c", "copy", "temp/" + videoUrl.split("/")[-2] + "." + extension], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             async with aiofiles.open("temp/" + videoUrl.split("/")[-2] + "." + extension, "rb") as f:
                 media = BytesIO(await f.read())
                 media.name = videoUrl.split("/")[-2] + "." + extension
-            return(media)  
+            shutil.rmtree("temp")
+            os.mkdir("temp")                
+            return(media) 
 
     async def gallery(mediaJson, url_mode):
         mediaID = []
         for i in mediaJson["gallery"]["items"]:
             mediaID.append(i["mediaId"])
         metadataJson = mediaJson["mediaMetadata"]
+        mediaUrlList = []
         mediaList = []
+        for mediaSource in mediaID:
+            if "u" in metadataJson[mediaSource]["s"].keys():
+                mediaUrl = metadataJson[mediaSource]["s"]["u"]
+            if "gif" in metadataJson[mediaSource]["s"].keys():
+                mediaUrl = metadataJson[mediaSource]["s"]["gif"]
+            mediaUrlList.append(mediaUrl)
+        #if url_mode:
+        #    return(tuple(mediaUrlList))                
         async with aiohttp.ClientSession() as session:
-            for mediaSource in mediaID:
-                if "u" in metadataJson[mediaSource]["s"].keys():
-                    mediaUrl = metadataJson[mediaSource]["s"]["u"]
-                if "gif" in metadataJson[mediaSource]["s"].keys():
-                    mediaUrl = metadataJson[mediaSource]["s"]["gif"]
+            for mediaUrl in mediaUrlList:
                 async with session.get(mediaUrl) as response:
                     media = BytesIO(await response.read())
                 media.name = mediaUrl.split("/")[-1].split("?")[0]
                 mediaList.append(media)
-            print("Gallery hosted on Reddit.")
         return(mediaList)
 
 async def noEmbed(sourceJson, url_mode):
     if "imgur" in sourceJson["url"]:
         mediaUrl = sourceJson["url"].replace("gifv", "mp4")
-        print(mediaUrl[0:50])
         if url_mode:
             return(mediaUrl)
         async with aiohttp.ClientSession() as session:
@@ -134,4 +146,4 @@ async def noEmbed(sourceJson, url_mode):
         return(media)
     else:
         print("NO EMBED?")
-        return
+        return("https://i.redd.it/hrxpk4vjj4z41.jpg")

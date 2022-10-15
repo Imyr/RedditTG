@@ -6,7 +6,8 @@ class credentials:
 class telegram:
     GROUP_ID = 0
     MESSAGE_STRUCTURE = "<b>{}</b>\nby <i>{}</i> on <a href={}>{}</a>"
-
+    LOG_STRUCTURE = "{} | https://redd.it/{} | {} | {}"
+    
 class reddit:
     COMPRESSED = False
     SUBREDDIT_LIST = [

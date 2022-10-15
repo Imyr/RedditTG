@@ -21,8 +21,7 @@ async def subParse(subName):
 
         for tag in config.reddit.FILTERS:
             if not (post[tag] == config.reddit.FILTERS[tag]):
-                print("AD/PIN | ", end="")
-                print(f"https://redd.it/{post['id'][3:9]} | {post['title'].ljust(20)[0:20]} | None")
+                print(f"AD/PIN | https://redd.it/{post['id'][3:9]} | {post['title'].ljust(20)[0:20]} | {post['permalink'].split('/')[-5]}")
                 break
         else:
             postList.append({
