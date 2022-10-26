@@ -1,6 +1,4 @@
-import os
 import re
-import shutil
 import aiohttp
 import aiofiles
 import requests
@@ -12,27 +10,38 @@ class embed:
     async def gfycat(mediaUrl, url_mode):
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
-                gyfcatEmbed = requests.utils.unquote(re.search(r'\?src=(.*)&display_name=Gfycat', str(await response.read())).group(1))
-            async with session.get(gyfcatEmbed) as response:
-                mediaUrl = requests.utils.unquote(re.search(r'"video":{"@type":"VideoObject","author":"anonymous","contentUrl":"(.*)","creator":"anonymous",', str(await response.read())).group(1))
+                parsedPage = bs(await response.read(), "lxml")
+                for i in parsedPage.find_all("source", type="video/mp4"):
+                    if (("giant" in i["src"]) or ("fat" in i["src"])):
+                        mediaUrl = i["src"]
             if url_mode:
                 return(mediaUrl)
-            async with session.get(gyfcatEmbed) as response:
+            async with session.get(mediaUrl) as response:
                 media = BytesIO(await response.read())
         media.name = mediaUrl.split("/")[-1].split("?")[0]
         return(media)
 
+    #untestedaf
     async def imgur(mediaUrl, url_mode):
+        mediaUrl = mediaUrl.replace("gifv", "mp4")
+        if url_mode:
+            return(mediaUrl)
         async with aiohttp.ClientSession() as session:
             async with session.get(mediaUrl) as response:
-                gyfcatEmbed = requests.utils.unquote(re.search(r'\?src=(.*)&display_name=Gfycat', str(await response.read())).group(1))
-            async with session.get(gyfcatEmbed) as response:
-                mediaUrl = requests.utils.unquote(re.search(r'"video":{"@type":"VideoObject","author":"anonymous","contentUrl":"(.*)","creator":"anonymous",', str(await response.read())).group(1))
-            if url_mode:
-                return(mediaUrl)
-            async with session.get(gyfcatEmbed) as response:
                 media = BytesIO(await response.read())
         media.name = mediaUrl.split("/")[-1].split("?")[0]
+        return(media)
+
+    async def redgifs(mediaUrl, url_mode):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(mediaUrl) as response:
+                parsedPage = bs(await response.read(), "lxml")
+                mediaUrl = requests.utils.unquote(parsedPage.find("meta", property="og:video")["content"]).replace("-mobile", "")
+        #if url_mode:
+        #    return(mediaUrl)
+            async with session.get(mediaUrl) as response:
+                media = BytesIO(await response.read())
+                media.name = mediaUrl.split("/")[-1].split("?")[0]             
         return(media)
 
     async def misc(mediaUrl, url_mode):
@@ -42,17 +51,6 @@ class embed:
             async with session.get(mediaUrl) as response:
                 media = BytesIO(await response.read())
         media.name = mediaUrl.split("/")[-1].split("?")[0]
-        return(media)
-    
-    async def redgifs(mediaUrl, url_mode):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(mediaUrl) as response:
-                redgifsEmbed = requests.utils.unquote(re.search(r'<iframe src="(.*)" frameborder="0"', str(await response.read())).group(1))
-            async with session.get(redgifsEmbed) as response:
-                mediaUrl = requests.utils.unquote(re.search(r'<meta property="og:video" content="(.*?)"><meta property="og:video:type" content="video/mp4">', str(await response.read())).group(1).replace("&amp;", "&"))
-            async with session.get(redgifsEmbed) as response:
-                media = BytesIO(await response.read())
-                media.name = redgifsEmbed.split("/")[-1].split("?")[0]             
         return(media)
 
 class redditHost:
@@ -106,9 +104,7 @@ class redditHost:
             subprocess.call(["ffmpeg", "-i", "temp/" + videoUrl.split("/")[-2] + "-vid." + extension, "-i", "temp/" + videoUrl.split("/")[-2] + "-aud." + extension, "-map", "0", "-map", "1", "-c", "copy", "temp/" + videoUrl.split("/")[-2] + "." + extension], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             async with aiofiles.open("temp/" + videoUrl.split("/")[-2] + "." + extension, "rb") as f:
                 media = BytesIO(await f.read())
-                media.name = videoUrl.split("/")[-2] + "." + extension
-            shutil.rmtree("temp")
-            os.mkdir("temp")                
+                media.name = videoUrl.split("/")[-2] + "." + extension               
             return(media) 
 
     async def gallery(mediaJson, url_mode):
@@ -144,6 +140,3 @@ async def noEmbed(sourceJson, url_mode):
                 media = BytesIO(await response.read())
         media.name = mediaUrl.split("/")[-1].split("?")[0]
         return(media)
-    else:
-        print("NO EMBED?")
-        return("https://i.redd.it/hrxpk4vjj4z41.jpg")

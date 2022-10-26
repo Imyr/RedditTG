@@ -10,26 +10,27 @@ async def subParse(subName):
                                 headers=constants.api.HEADERS, 
                                 params=config.reddit.PARAMETERS) as response:
             respJson = await response.json()
-    
-    for id in respJson["postIds"]:
-        post = respJson["posts"][id]
-        
-        if post["crosspostRootId"]:
-            crosspost = post["crosspostRootId"]
-        else:
-            crosspost = False            
+    try:
+        for id in respJson["postIds"]:
+            post = respJson["posts"][id]
+            
+            if post["crosspostRootId"]:
+                crosspost = post["crosspostRootId"]
+            else:
+                crosspost = False            
 
-        for tag in config.reddit.FILTERS:
-            if not (post[tag] == config.reddit.FILTERS[tag]):
-                print(f"AD/PIN | https://redd.it/{post['id'][3:9]} | {post['title'].ljust(20)[0:20]} | {post['permalink'].split('/')[-5]}")
-                break
-        else:
-            postList.append({
-                    "id": post["id"],
-                    "author": post["author"],
-                    "title": post["title"],
-                    "link": post["permalink"],
-                    "crosspost": crosspost
-                    })
-
+            for tag in config.reddit.FILTERS:
+                if not (post[tag] == config.reddit.FILTERS[tag]):
+                    print(f"AD/PIN | https://redd.it/{post['id'][3:9]} | {post['title'].ljust(20)[0:20]} | {post['permalink'].split('/')[-5]}")
+                    break
+            else:
+                postList.append({
+                        "id": post["id"],
+                        "author": post["author"],
+                        "title": post["title"],
+                        "link": post["permalink"],
+                        "crosspost": crosspost
+                        })
+    except KeyError:
+        print("Subreddit inaccessible:", subName)
     return(postList)
